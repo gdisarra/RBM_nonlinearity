@@ -15,7 +15,10 @@ A new RBM is trained with different activation functions and standard initial co
 An RBM with ground truth initial conditions - and perturbations of it - is trained with different activation functions, to explore the neighborhood of the optimal solution.
 
 ## MNIST
-Contrastive Divergence (CD), Persistent CD or Alternating Gibbs sampling are developed to learn the MNIST dataset.
+Contrastive Divergence (CD), Persistent CD or Alternating Gibbs sampling are developed to learn the MNIST dataset. (work in progress...)
+
+## RBM induced interactions statistics
+Equations (7),(9) and (15),(20),(22) in "The effects of activation functions in Restricted Boltzmann Machines", di Sarra et al.
 
 ## Code description
 
