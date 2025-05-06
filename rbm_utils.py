@@ -411,6 +411,103 @@ class RBM:
             
         #return Sop, op        
         return op
+        
+    def compute_moments(N, M, W0, g, c, activation, s_max, if_plot =False, all_vars = True):
+    
+    '''
+    Implementation of expanded interaction moments.
+
+    Parameters
+    ----------
+    N : number of visible nodes
+    
+    M : number of hidden nodes
+    
+    W0 : weight mean
+    
+    g : absolute standard deviation
+    
+    c: hidden biases
+    
+    activation : hidden nodes activation function
+    
+    s_max : order of interaction to display
+
+    Returns
+    -------
+    First and second interaction moment
+
+    '''
+    
+    if (str(activation)=='linear'):
+        K = lambda x,c: np.square(x)/2 -np.multiply(x,c)
+        K1 = lambda x: x
+        K2 = lambda x: x*0+1
+    elif (str(activation)=='ReLU'):
+        K = lambda x,c: np.square(x)/2. - np.multiply(x,c) + np.log((1+erf((x-c)/math.sqrt(2)))/(1-erf(c/math.sqrt(2))))
+        K1 = lambda x: x + math.sqrt(2/math.pi) * np.true_divide(np.exp(-x**2/2),(1+erf(x/math.sqrt(2))))
+        K2 = lambda x: 1 - np.multiply((K1(x)-x), K1(x))
+    elif (str(activation)=='step'):
+        K = lambda x,c: np.log(1.+np.exp(np.subtract(x,c)))-np.log(1+np.exp(-c))
+        K1 = lambda x: math.exp(x)/(1+math.exp(x))
+        K2 = lambda x: math.exp(x)/(1+math.exp(x))**2
+    elif (str(activation)=='exponential'):
+        K = lambda x,c: np.multiply(np.exp(-c),(np.exp(x)-1))
+        K1 = lambda x: math.exp(x)
+        K2 = lambda x: math.exp(x)
+       
+    #eq. 17, 18, 19
+    alpha = np.array([ np.sum([ (-1)**p * binom(s,s-p) * K1((s+1-p)*W0) for p in range(s+1)]) for s in range(s_max)])
+    beta = np.array([ np.sum([ (-1)**p / 2 * binom(s,s-p) * K2((s+1-p) * W0) for p in range(s+1)]) for s in range(s_max)])
+    eta = np.array([ np.sum([ (-1)**p * binom(s-1,s-1-p) * K2((s+1-p) * W0) for p in range(s+1)]) for s in range(s_max)])
+    eta[0] = 0.
+    
+    if if_plot:
+        fig = pl.figure(figsize=(16,16))
+        #pl.suptitle(r'Square root of $s$-th order interaction $2^{nd}$ moment for '+str(activation_function)+' activation', fontsize = 28)
+        ax = fig.subplots()
+        pl.title(r'$\alpha^*$',fontsize=60)
+        #pl.yscale('log')
+        pl.yticks(fontsize = 50)
+        pl.xticks(fontsize = 50)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        pl.ylabel(r'$\alpha^*$',fontsize=60)
+        pl.xlabel(r'$s$',fontsize=60)
+        for esse in range(1,s_max):
+            ax.scatter(np.arange(0,s_max,1),alpha, lw = 6)
+        pl.show()
+        
+        fig = pl.figure(figsize=(16,16))
+        #pl.suptitle(r'Square root of $s$-th order interaction $2^{nd}$ moment for '+str(activation_function)+' activation', fontsize = 28)
+        ax = fig.subplots()
+        pl.title(r'$\beta^*$',fontsize=60)
+        #pl.yscale('log')
+        pl.yticks(fontsize = 50)
+        pl.xticks(fontsize = 50)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        pl.ylabel(r'$\beta^*$',fontsize=60)
+        pl.xlabel(r'$s$',fontsize=60)
+        for esse in range(1,s_max):
+            ax.scatter(np.arange(0,s_max,1),beta, lw = 6)
+        pl.show()
+    
+    #eq. 15
+    I0_s = M * np.array([ np.sum([ (-1)**p * binom(s+1,s+1-p) * K((s+1-p) * W0, c) for p in range(s+1)]) for s in range(s_max)])
+    #eq. 20,22*
+    mom1 = np.array([ g**2 * beta[s] *(s+1) for s in range(s_max)])
+    mom2 = np.array([ (s+1)*g**2 * alpha[s]**2 + (s+1)*g**4/M * (beta[s]**2 * ((s+1)*M+2) + s/2*eta[s]**2)  for s in range(s_max)])
+    
+    if activation=='exponential':
+        moms1_exact = M * np.array( [ (np.exp( W0 + g**2/(2*M))-1)**(s+1) for s in range(s_max)] ) )
+        a = np.exp( W0 + g**2 / (2*M) )
+        moms2_exact = np.array([ M * (np.exp(2*(W0 + g**2/M) ) - 2 * a + 1 )**(s+1) + M*(M-1) * (a-1)**(2*(s+1)) for s in range(s_max)]))
+            
+    if all_vars:
+        return mom1 + I0_s, mom2 + np.square(I0_s) + 2*I0_s*mom1, alpha, beta, gamma
+    else:
+        return mom1 + I0_s, mom2 + np.square(I0_s) + 2*I0_s*mom1
     
     
     def exact_train(self, maxepoch, v, l_rate, H_d, Z_d, rbm_gt, ground_truth, hidden_bias=True, if_plot = True):
